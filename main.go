@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Veer")
+	fmt.Println("Veer Patel")
 	fmt.Println("Simple Calculator")
 	fmt.Println("=================")
 	fmt.Println("Available operations: +, -, *, /, %")
