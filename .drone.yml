@@ -3,7 +3,7 @@ type: docker
 name: calculator
 
 global-variables:
-  go_image: &go_image golang:1.23.3-bullseye
+  go_image: &go_image golang:1.24.2-bullseye
   environment: &default_environment
     GOOS: linux
     GOARCH: amd64
