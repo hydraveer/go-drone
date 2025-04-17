@@ -47,11 +47,11 @@ func main() {
 func calculate(input string) (float64, error) {
 	// Parse the input string
 	input = strings.TrimSpace(input)
-	
+
 	// Check for operators
 	var operator string
 	var parts []string
-	
+
 	if strings.Contains(input, "+") {
 		operator = "+"
 		parts = strings.Split(input, "+")
