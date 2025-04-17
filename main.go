@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	fmt.Println("Veer")
 	fmt.Println("Simple Calculator")
 	fmt.Println("=================")
 	fmt.Println("Available operations: +, -, *, /, %")
