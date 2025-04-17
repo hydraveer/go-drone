@@ -1,0 +1,60 @@
+kind: pipeline
+type: docker
+name: calculator
+
+global-variables:
+  go_image: &go_image golang:1.23.3-bullseye
+  environment: &default_environment
+    GOOS: linux
+    GOARCH: amd64
+    CGO_ENABLED: 1
+    COMPONENT: calculator
+    IMAGE: calculator
+    VERSION: 1.0.0
+    PACKAGE_TYPE: DEBIAN
+
+trigger:
+  ref:
+    include:
+      - refs/pull/**
+      - refs/push/**
+      - refs/tags/**
+      - refs/heads/develop
+
+
+services:
+  - name: docker-sandbox
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+
+volumes:
+  - name: sandbox-docker-sock
+    temp: { }
+  - name: deps
+    temp: { }
+
+steps:
+  - name: wait-for-sandbox
+    image: docker
+    commands:
+      - apk add bash
+      - chmod +x ./waitForSandbox.sh
+      - ./waitForSandbox.sh
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+        
+  - name: dependencies
+    image: *go_image
+    environment:
+      <<: *default_environment
+    volumes:
+      - name: deps
+        path: /go
+    commands:
+      - go get -t ./...
+    depends_on:
+      - wait-for-sandbox

@@ -1,0 +1,29 @@
+---
+
+run:
+  timeout: 10m
+
+linters:
+  enable:
+    - dogsled
+    - copyloopvar
+    - gofmt
+    - gosec
+    - govet
+    - misspell
+    - nakedret
+    - noctx
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - errcheck
+        - ineffassign
+        - staticcheck
+        - noctx

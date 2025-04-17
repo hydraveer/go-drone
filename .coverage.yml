@@ -1,0 +1,37 @@
+module: "github.com/hydraveer/drone-test"
+
+total Threshold: 73
+
+thresholdType: stmt
+
+#fileThreshold: 60
+
+# should be updated to 80/50 but adding one by one
+
+####ADDITIONAL FLAGS
+
+
+skip:
+
+"cmd/createdb.go"
+module: github.com/hydraveer/drone-test
+
+totalThreshold: 73
+thresholdType: stmt
+
+skip:
+  - cmd/createdb.go
+  - cmd/devicetoken.go
+  - cmd/grpc.go
+  - cmd/root.go
+  - cmd/secret.go
+  - cmd/service.go
+  - cmd/servicetoken.go
+  - cmd/testcreatetoken.go
+  - goose/mocks                     # mocks is generated, and shall not be part of coverage report
+  - goose/new_client_token_verifier.go
+  - goose/vault.go                  # this is for Kubernetes
+  - internal/iface/mocks           # assumed cleanup from typo
+  - internal/utils/metrics.go
+  - main.go
+  - testscripts/longevity/main.go
