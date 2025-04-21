@@ -124,3 +124,5 @@ steps:
       - docker build -t $${IMAGE}:$DRONE_BUILD_NUMBER -f ./Dockerfile .
       - docker images
       - echo "Image build complete"
+    depends_on: 
+      - build
