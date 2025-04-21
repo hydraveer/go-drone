@@ -71,7 +71,6 @@ steps:
     when:
       event:
         - pull_request
-  
 
   - name: unit-test
     image: *go_image
@@ -101,3 +100,27 @@ steps:
     when:
       event:
         - pull_request
+  
+  - name: build
+    image: *go_image
+    environment:
+      <<: *default_environment
+    volumes:
+      - name: deps
+        path: /go/pkg/mod
+    commands: 
+      - go mod download
+      - go build -v -tags netgo -ldflags '-w' o bootstrap
+    depends_on: 
+      - coverage-check
+  
+  - name: build-image
+    image: docker
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - echo "Image building"
+      - docker build -t $${IMAGE}:$DRONE_BUILD_NUMBER -f ./Dockerfile .
+      - docker images
+      - echo "Image build complete"
