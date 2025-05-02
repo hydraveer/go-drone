@@ -27,6 +27,8 @@ services:
   - name: docker-sandbox
     image: docker:dind
     privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
     volumes:
       - name: sandbox-docker-sock
         path: /var/run
@@ -118,6 +120,7 @@ steps:
     image: docker
     environment:
       <<: *default_environment
+      DOCKER_HOST: tcp://docker-sandbox:2375
     commands: 
       - echo "Image start building..."
       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
