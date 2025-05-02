@@ -123,7 +123,7 @@ steps:
       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
       - docker images
       - echo "Image build successfully."
-    volume: 
+    volumes: 
       - name: sandbox-docker-sock
         path: /var/run
     depends_on:
@@ -139,7 +139,7 @@ steps:
       - echo "Scanning $SCAN_IMAGE"
       - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
       - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
-    volume:
+    volumes:
       - name: sandbox-docker-sock
         path: /var/run
     depends_on:
