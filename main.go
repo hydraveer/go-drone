@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Test build 7")
+	fmt.Println("Test build 8")
 	fmt.Println("Simple Calculator")
 	fmt.Println("=================")
 	fmt.Println("Available operations: +, -, *, /, %")
