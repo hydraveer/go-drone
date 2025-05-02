@@ -92,7 +92,9 @@ steps:
       - go mod download
       - go build -v -tags netgo -ldflags '-w' -o bootstrap
       - go clean -cache -modcache -i -r  # This line cleans Go's build cache
-
+    depends_on:
+      - coverage-check
+      
   - name: build-image
     image: docker
     volumes:
