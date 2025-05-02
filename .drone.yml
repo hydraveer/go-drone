@@ -114,3 +114,19 @@ steps:
     depends_on: 
       - coverage-check
   
+  - name:  build-image
+    image: plugins/docker
+    environment:
+      <<: *default_environment
+    commands: 
+      - echo "Image start building..."
+      - docker build --no-cahce -f ./Dockerfile -t calculator:latest .
+      - docker images
+      - echo "Image build successfully."
+    volume: 
+      - name: sandbox-docker-sock
+        path: /var/run
+    depends_on:
+      -  build
+      
+  
