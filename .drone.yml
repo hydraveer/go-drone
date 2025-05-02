@@ -22,13 +22,13 @@ trigger:
       - refs/heads/develop
       - refs/heads/main
 
-
 services:
   - name: docker-sandbox
     image: docker:dind
     privileged: true
     environment:
       DOCKER_TLS_CERTDIR: ""
+    command: ["dockerd", "--host=tcp://0.0.0.0:2375", "--host=unix:///var/run/docker.sock"]
     volumes:
       - name: sandbox-docker-sock
         path: /var/run
@@ -42,14 +42,16 @@ volumes:
 steps:
   - name: wait-for-sandbox
     image: docker
+    environment:
+      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
-      - apk add bash
+      - apk add --no-cache bash
       - chmod +x ./waitForSandbox.sh
       - ./waitForSandbox.sh
     volumes:
       - name: sandbox-docker-sock
         path: /var/run
-        
+
   - name: dependencies
     image: *go_image
     environment:
@@ -61,12 +63,11 @@ steps:
       - go get -t ./...
     depends_on:
       - wait-for-sandbox
-  
+
   - name: lint-check
     image: golangci/golangci-lint:v1.64.8
     pull: if-not-exists
     commands:
-      # runs all linters defined in .golangci.yml
       - golangci-lint run --timeout 20m
     depends_on:
       - dependencies
@@ -88,7 +89,7 @@ steps:
     when:
       event:
         - pull_request
-  
+
   - name: coverage-check
     image: *go_image
     environment:
@@ -102,7 +103,7 @@ steps:
     when:
       event:
         - pull_request
-  
+
   - name: build
     image: *go_image
     environment:
@@ -110,40 +111,37 @@ steps:
     volumes:
       - name: deps
         path: /go/pkg/mod
-    commands: 
+    commands:
       - go mod download
       - go build -v -tags netgo -ldflags '-w' -o bootstrap
-    depends_on: 
+    depends_on:
       - coverage-check
-  
-  - name:  build-image
+
+  - name: build-image
     image: docker
     environment:
       <<: *default_environment
       DOCKER_HOST: tcp://docker-sandbox:2375
-    commands: 
+    commands:
       - echo "Image start building..."
+      - docker info
       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
       - docker images
       - echo "Image build successfully."
-    volumes: 
-      - name: sandbox-docker-sock
-        path: /var/run
     depends_on:
-      -  build
-      
+      - build
+      - wait-for-sandbox
+
   - name: scan-image
     image: aquasec/trivy
     environment:
       <<: *default_environment
+      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
       - export SCAN_IMAGE=calculator:latest
       - export TRIVY_DISABLE_VET_NOTICE=0
       - echo "Scanning $SCAN_IMAGE"
       - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
       - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
-    volumes:
-      - name: sandbox-docker-sock
-        path: /var/run
     depends_on:
       - build-image
