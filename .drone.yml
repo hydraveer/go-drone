@@ -114,18 +114,3 @@ steps:
     depends_on: 
       - coverage-check
   
-  - name: build-image
-    image: docker
-    pull: if-not-exists
-    volumes:
-      - name: sandbox-docker-sock
-        path: /var/run
-    environment:
-      <<: *default_environment
-    commands:
-      - echo "Image building"
-      - docker build -t $${IMAGE}:$DRONE_BUILD_NUMBER -f ./Dockerfile .
-      - docker images
-      - echo "Image build complete"
-    depends_on: 
-      - docker-sandbox
