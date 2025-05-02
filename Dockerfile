@@ -1,5 +1,5 @@
-# Stage 1: Build the Go binary
-FROM golang:1.22 AS builder
+# Stage 1: Build environment
+FROM golang:1.24.2-bullseye AS builder
 
 # Set the working directory
 WORKDIR /app
