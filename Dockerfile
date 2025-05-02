@@ -1,27 +1,29 @@
 # Stage 1: Build the Go binary
-FROM golang:1.22 AS builder
+FROM golang:1.22 as builder
 
 # Set the working directory
 WORKDIR /app
 
-# Copy go.mod and go.sum (if they exist)
-COPY go.mod go.sum ./
-RUN go mod download || true
+# Set custom temp dir to avoid no space error
+ENV TMPDIR=/app/tmp
+RUN mkdir -p /app/tmp
 
-# Copy the source code
-COPY . .
+# Copy go.mod and go.sum
+COPY go.mod
+RUN go mod download
+
+# Copy only required Go source files
+COPY *.go ./
 
 # Build the Go app
 RUN go build -o calculator
 
-# Stage 2: Lightweight image
+# Stage 2: Lightweight runtime image
 FROM debian:bullseye-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy binary from builder stage
+# Copy the built binary
 COPY --from=builder /app/calculator .
 
-# Entry point (default command)
 ENTRYPOINT ["./calculator"]
