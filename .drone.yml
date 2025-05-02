@@ -120,7 +120,7 @@ steps:
       <<: *default_environment
     commands: 
       - echo "Image start building..."
-      - docker build --no-cahce -f ./Dockerfile -t calculator:latest .
+      - docker build --no-cache -f ./Dockerfile -t calculator:latest .
       - docker images
       - echo "Image build successfully."
     volume: 
@@ -129,4 +129,18 @@ steps:
     depends_on:
       -  build
       
-  
+  - name: scan-image
+    image: aquasec/trivy
+    environment:
+      <<: *default_environment
+    commands:
+      - export SCAN_IMAGE=calculator:latest
+      - export TRIVY_DISABLE_VET_NOTICE=0
+      - echo "Scanning $SCAN_IMAGE"
+      - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
+      - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
+    volume:
+      - name: sandbox-docker-sock
+        path: /var/run
+    depends_on:
+      - build-image
