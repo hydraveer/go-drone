@@ -27,8 +27,11 @@ services:
     image: docker:dind
     privileged: true
     environment:
-      DOCKER_TLS_CERTDIR: ""
-    command: ["dockerd", "--host=tcp://0.0.0.0:2375", "--host=unix:///var/run/docker.sock"]
+      DOCKER_TLS_CERTDIR: ""  # Disable TLS
+    command:
+      - "dockerd"
+      - "--host=tcp://0.0.0.0:2375"  # Expose Docker on TCP
+      - "--host=unix:///var/run/docker.sock"  # Expose Docker on Unix socket
     volumes:
       - name: sandbox-docker-sock
         path: /var/run
@@ -42,15 +45,23 @@ volumes:
 steps:
   - name: wait-for-sandbox
     image: docker
-    environment:
-      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
-      - apk add --no-cache bash
+      - apk add bash
       - chmod +x ./waitForSandbox.sh
       - ./waitForSandbox.sh
     volumes:
       - name: sandbox-docker-sock
         path: /var/run
+
+  - name: wait-for-docker
+    image: docker
+    environment:
+      DOCKER_HOST: tcp://docker-sandbox:2375
+    commands:
+      - until docker -H tcp://docker-sandbox:2375 info > /dev/null 2>&1; do sleep 1; done
+      - echo "Docker daemon is ready!"
+    depends_on:
+      - wait-for-sandbox
 
   - name: dependencies
     image: *go_image
@@ -62,7 +73,7 @@ steps:
     commands:
       - go get -t ./...
     depends_on:
-      - wait-for-sandbox
+      - wait-for-docker
 
   - name: lint-check
     image: golangci/golangci-lint:v1.64.8
@@ -120,28 +131,27 @@ steps:
   - name: build-image
     image: docker
     environment:
-      <<: *default_environment
       DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
       - echo "Image start building..."
-      - docker info
       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
       - docker images
       - echo "Image build successfully."
     depends_on:
       - build
-      - wait-for-sandbox
 
   - name: scan-image
     image: aquasec/trivy
     environment:
       <<: *default_environment
-      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
       - export SCAN_IMAGE=calculator:latest
       - export TRIVY_DISABLE_VET_NOTICE=0
       - echo "Scanning $SCAN_IMAGE"
       - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
       - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
     depends_on:
       - build-image
