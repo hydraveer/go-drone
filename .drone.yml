@@ -45,6 +45,8 @@ volumes:
 steps:
   - name: wait-for-sandbox
     image: docker
+    environment:
+      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
       - apk add bash
       - chmod +x ./waitForSandbox.sh
@@ -58,8 +60,12 @@ steps:
     environment:
       DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
-      - until docker -H tcp://docker-sandbox:2375 info > /dev/null 2>&1; do sleep 1; done
-      - echo "Docker daemon is ready!"
+      - docker info || (echo "Waiting for Docker daemon..." && sleep 10)
+      - for i in $(seq 1 30); do docker info > /dev/null 2>&1 && echo "Docker daemon is ready!" && exit 0 || sleep 1; done
+      - echo "Docker daemon failed to start within timeout" && exit 1
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
     depends_on:
       - wait-for-sandbox
 
@@ -132,8 +138,12 @@ steps:
     image: docker
     environment:
       DOCKER_HOST: tcp://docker-sandbox:2375
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
     commands:
       - echo "Image start building..."
+      - docker info
       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
       - docker images
       - echo "Image build successfully."
@@ -143,7 +153,7 @@ steps:
   - name: scan-image
     image: aquasec/trivy
     environment:
-      <<: *default_environment
+      DOCKER_HOST: tcp://docker-sandbox:2375
     commands:
       - export SCAN_IMAGE=calculator:latest
       - export TRIVY_DISABLE_VET_NOTICE=0
