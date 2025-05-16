@@ -113,6 +113,7 @@ steps:
       - name: docker-socket
         path: /var/run/docker.sock
     commands:
+      - echo $USER
       - export SCAN_IMAGE=calculator:latest
       - export TRIVY_DISABLE_VET_NOTICE=0
       - echo "Scanning $SCAN_IMAGE"
@@ -121,26 +122,26 @@ steps:
     depends_on:
       - build-image
       
-  - name: release-image
-    image: docker
-    environment:
-      DOCKER_USERNAME:
-        from_secret: USER
-      DOCKER_PASSWORD:
-        from_secret: TOKEN
-    volumes:
-      - name: docker-socket
-        path: /var/run/docker.sock
-    commands:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
-      - docker push "$DOCKER_USERNAME"/calculator:latest
-    depends_on:
-      - scan-image
-    when:
-      branch:
-        - main
-      event:
-        - push
+  # - name: release-image
+  #   image: docker
+  #   environment:
+  #     DOCKER_USERNAME:
+  #       from_secret: USER
+  #     DOCKER_PASSWORD:
+  #       from_secret: TOKEN
+  #   volumes:
+  #     - name: docker-socket
+  #       path: /var/run/docker.sock
+  #   commands:
+  #     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  #     - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
+  #     - docker push "$DOCKER_USERNAME"/calculator:latest
+  #   depends_on:
+  #     - scan-image
+  #   when:
+  #     branch:
+  #       - main
+  #     event:
+  #       - push
 
     
