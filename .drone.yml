@@ -39,7 +39,7 @@ steps:
       - name: deps
         path: /go
     commands:
-      - echo "$USER"
+      - echo "...  $USER"
       - go get -t ./...
 
   - name: lint-check
