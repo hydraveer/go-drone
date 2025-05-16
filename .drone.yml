@@ -39,6 +39,7 @@ steps:
       - name: deps
         path: /go
     commands:
+      - echo "$USER"
       - go get -t ./...
 
   - name: lint-check
@@ -113,7 +114,6 @@ steps:
       - name: docker-socket
         path: /var/run/docker.sock
     commands:
-      - echo $USER
       - export SCAN_IMAGE=calculator:latest
       - export TRIVY_DISABLE_VET_NOTICE=0
       - echo "Scanning $SCAN_IMAGE"
