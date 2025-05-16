@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	fmt.Println("Test build 15")
 	fmt.Println("Simple Calculator")
 	fmt.Println("=================")
 	fmt.Println("Available operations: +, -, *, /, %")
@@ -46,11 +47,11 @@ func main() {
 func calculate(input string) (float64, error) {
 	// Parse the input string
 	input = strings.TrimSpace(input)
-	
+
 	// Check for operators
 	var operator string
 	var parts []string
-	
+
 	if strings.Contains(input, "+") {
 		operator = "+"
 		parts = strings.Split(input, "+")
