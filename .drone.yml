@@ -123,13 +123,18 @@ steps:
       
   - name: release-image
     image: docker
+    environment:
+      DOCKER_USERNAME:
+        from_secret: USER
+      DOCKER_PASSWORD:
+        from_secret: TOKEN
     volumes:
       - name: docker-socket
         path: /var/run/docker.sock
     commands:
-      - docker login
-      - docker tag calculator:latest $USER/calculator:latest
-      - docker push USER/calculator:latest
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
+      - docker push "$DOCKER_USERNAME"/calculator:latest
     depends_on:
       - scan-image
     when:
