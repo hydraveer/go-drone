@@ -121,7 +121,7 @@ steps:
   #     - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
   #   depends_on:
   #     - build-image
-  
+
   - name: start-ec2-instance
     image: amazon/aws-cli
     commands:
@@ -161,8 +161,6 @@ steps:
 
       # Get the IP from previous step (assumes /tmp is preserved between steps, or pass via workspace/artifact if needed)
       - export PUBLIC_IP=$(cat /tmp/public_ip.txt)
-      - echo "EC2 Public IP: $PUBLIC_IP"
-
       - echo "$EC2_SSH_KEY" > /tmp/key.pem
       - chmod 600 /tmp/key.pem
 
