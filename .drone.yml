@@ -122,11 +122,14 @@ steps:
   #   depends_on:
   #     - build-image
 
-  - name: start-ec2-instance
+  - name: create-ec2-instance
     image: amazon/aws-cli
     commands:
-      - aws ec2 start-instances --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
-      - aws ec2 wait instance-running --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
+      - |
+        INSTANCE_ID=$(aws ec2 run-instances --image-id ami-020cba7c55df1f615 --count 1 --instance-type t2.micro --region us-east-1 --query 'Instances[0].InstanceId' --output text)
+        echo "INSTANCE_ID=$INSTANCE_ID" > instance_id.txt
+        aws ec2 create-tags --resources $INSTANCE_ID --tags Key=Name,Value=regression_test --region us-east-1
+      - aws ec2 wait instance-running --instance-ids $(cat instance_id.txt | cut -d'=' -f2) --region us-east-1
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -137,7 +140,7 @@ steps:
   - name: clean-ec2-machine
     image: amazon/aws-cli
     commands:
-      - aws ssm send-command --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1 --document-name "AWS-RunShellScript" --comment "Cleanup EC2 machine" --parameters commands=["sudo rm -rf /*"]
+      - aws ssm send-command --instance-ids $(cat instance_id.txt | cut -d'=' -f2) --region us-east-1 --document-name "AWS-RunShellScript" --comment "Cleanup EC2 machine" --parameters commands=["sudo rm -rf /*"]
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -145,7 +148,7 @@ steps:
         from_secret: aws_secret_access_key
       AWS_DEFAULT_REGION: us-east-1
     depends_on:
-      - start-ec2-instance
+      - create-ec2-instance
 
   # - name: release-image
   #   image: docker
