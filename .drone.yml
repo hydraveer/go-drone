@@ -139,7 +139,7 @@ steps:
     commands:
       - PUBLIC_IP=$(aws ec2 describe-instances --instance-ids i-0ab2a77d25391389b --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
       - echo "$PUBLIC_IP" > /tmp/public_ip.txt
-      - echo "Fetched EC2 IP: $PUBLIC_IP"
+      - cat /tmp/public_ip.txt
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
