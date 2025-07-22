@@ -130,6 +130,16 @@ steps:
         echo "INSTANCE_ID=$INSTANCE_ID" > instance_id.txt
         aws ec2 create-tags --resources $INSTANCE_ID --tags Key=Name,Value=regression_test --region us-east-1
       - aws ec2 wait instance-running --instance-ids $(cat instance_id.txt | cut -d'=' -f2) --region us-east-1
+      - |
+        for i in {1..30}; do
+          STATUS=$(aws ssm describe-instance-information --filters Key=InstanceIds,Values=$(cat instance_id.txt | cut -d'=' -f2) --region us-east-1 --query 'InstanceInformationList[0].PingStatus' --output text)
+          echo "SSM status: $STATUS"
+          if [ "$STATUS" = "Online" ]; then
+            echo "Instance is ready for SSM commands."
+            break
+          fi
+          sleep 10
+        done
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
