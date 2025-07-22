@@ -126,7 +126,7 @@ steps:
     image: amazon/aws-cli
     commands:
       - aws ec2 start-instances --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
-      - aws ec2 wait instance-running --instance-ids --region us-east-1
+      - aws ec2 wait instance-running --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
