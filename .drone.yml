@@ -122,11 +122,12 @@ steps:
   #   depends_on:
   #     - build-image
 
+steps:
   - name: start-ec2-instance
     image: amazon/aws-cli
     commands:
-      - aws ec2 start-instances --instance-ids i-058a635335a3d3dd1 --region us-east-1
-      - aws ec2 wait instance-running --instance-ids i-058a635335a3d3dd1 --region us-east-1
+      - aws ec2 start-instances --instance-ids i-0ab2a77d25391389b --region us-east-1
+      - aws ec2 wait instance-running --instance-ids i-0ab2a77d25391389b --region us-east-1
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -134,7 +135,48 @@ steps:
         from_secret: aws_secret_access_key
       AWS_DEFAULT_REGION: us-east-1
 
+  - name: get-ec2-public-ip
+    image: amazon/aws-cli
+    commands:
+      - export PUBLIC_IP=$(aws ec2 describe-instances \
+          --instance-ids i-0ab2a77d25391389b \
+          --query "Reservations[0].Instances[0].PublicIpAddress" \
+          --output text)
+      - echo "$PUBLIC_IP" > /tmp/public_ip.txt
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+      AWS_DEFAULT_REGION: us-east-1
 
+  - name: ssh-to-ec2
+    image: alpine
+    depends_on:
+      - get-ec2-public-ip
+    environment:
+      EC2_SSH_KEY:
+        from_secret: regression
+    commands:
+      - apk add --no-cache openssh curl
+
+      # Get the IP from previous step (assumes /tmp is preserved between steps, or pass via workspace/artifact if needed)
+      - export PUBLIC_IP=$(cat /tmp/public_ip.txt)
+      - echo "EC2 Public IP: $PUBLIC_IP"
+
+      - echo "$EC2_SSH_KEY" > /tmp/key.pem
+      - chmod 600 /tmp/key.pem
+
+      # Optional: Wait for EC2 SSH to be ready
+      - |
+        for i in $(seq 1 10); do
+          nc -zv $PUBLIC_IP 22 && break
+          echo "Waiting for SSH on $PUBLIC_IP..."
+          sleep 5
+        done
+
+      # SSH into EC2 and run a remote command
+      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@$PUBLIC_IP 'echo "✅ Connected to EC2!" && hostname'
 
   # - name: release-image
   #   image: docker
