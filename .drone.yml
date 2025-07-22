@@ -138,8 +138,8 @@ steps:
     image: amazon/aws-cli
     commands:
       - PUBLIC_IP=$(aws ec2 describe-instances --instance-ids i-0ab2a77d25391389b --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-      - echo "$PUBLIC_IP" > /tmp/public_ip.txt
-      - cat /tmp/public_ip.txt
+      - echo "$PUBLIC_IP" > public_ip.txt
+      - cat public_ip.txt
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
@@ -155,45 +155,17 @@ steps:
       - get-ec2-public-ip
     environment:
       EC2_SSH_KEY:
-        from_secret: regression
+        from_secret: ec2_ssh_key
     commands:
       - apk add --no-cache openssh curl
-
-      # Get the IP from previous step (assumes /tmp is preserved between steps, or pass via workspace/artifact if needed)
-      - export PUBLIC_IP=$(cat /tmp/public_ip.txt)
+      - export PUBLIC_IP=$(cat public_ip.txt)
+      - echo "EC2 Public IP: $PUBLIC_IP"
       - echo "$EC2_SSH_KEY" > /tmp/key.pem
       - chmod 600 /tmp/key.pem
-
-      # Optional: Wait for EC2 SSH to be ready
       - |
         for i in $(seq 1 10); do
           nc -zv $PUBLIC_IP 22 && break
           echo "Waiting for SSH on $PUBLIC_IP..."
           sleep 5
         done
-
-      # SSH into EC2 and run a remote command
       - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@$PUBLIC_IP 'echo "✅ Connected to EC2!" && hostname'
-    depends_on:
-      - get-ec2-public-ip
-  # - name: release-image
-  #   image: docker
-  #   environment:
-  #     DOCKER_USERNAME:
-  #       from_secret: USER
-  #     DOCKER_PASSWORD:
-  #       from_secret: TOKEN
-  #   volumes:
-  #     - name: docker-socket
-  #       path: /var/run/docker.sock
-  #   commands:
-  #     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  #     - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
-  #     - docker push "$DOCKER_USERNAME"/calculator:latest
-  #   depends_on:
-  #     - scan-image
-  #   when:
-  #     branch:
-  #       - main
-  #     event:
-  #       - push
