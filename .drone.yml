@@ -1,147 +1,175 @@
-kind: pipeline
-type: docker
-name: calculator
+# kind: pipeline
+# type: docker
+# name: calculator
 
-global-variables:
-  go_image: &go_image golang:1.24.2-bullseye
-  environment: &default_environment
-    GOOS: linux
-    GOARCH: amd64
-    CGO_ENABLED: 1
-    COMPONENT: calculator
-    IMAGE: calculator
-    VERSION: 1.0.0
-    PACKAGE_TYPE: DEBIAN
+# global-variables:
+#   go_image: &go_image golang:1.24.2-bullseye
+#   environment: &default_environment
+#     GOOS: linux
+#     GOARCH: amd64
+#     CGO_ENABLED: 1
+#     COMPONENT: calculator
+#     IMAGE: calculator
+#     VERSION: 1.0.0
+#     PACKAGE_TYPE: DEBIAN
 
-trigger:
-  ref:
-    include:
-      - refs/pull/**
-      - refs/push/**
-      - refs/tags/**
-      - refs/heads/develop
-      - refs/heads/main
+# trigger:
+#   ref:
+#     include:
+#       - refs/pull/**
+#       - refs/push/**
+#       - refs/tags/**
+#       - refs/heads/develop
+#       - refs/heads/main
 
-# Using host's Docker daemon instead of DinD
-volumes:
-  - name: docker-socket
-    host:
-      path: /var/run/docker.sock
-  - name: deps
-    temp: {}
+# # Using host's Docker daemon instead of DinD
+# volumes:
+#   - name: docker-socket
+#     host:
+#       path: /var/run/docker.sock
+#   - name: deps
+#     temp: {}
 
-steps:
-  - name: dependencies
-    image: *go_image
-    environment:
-      <<: *default_environment
-    volumes:
-      - name: deps
-        path: /go
-    commands:
-      - echo "...  $USER"
-      - go get -t ./...
+# steps:
+#   - name: dependencies
+#     image: *go_image
+#     environment:
+#       <<: *default_environment
+#     volumes:
+#       - name: deps
+#         path: /go
+#     commands:
+#       - echo "...  $USER"
+#       - go get -t ./...
 
-  - name: lint-check
-    image: golangci/golangci-lint:v1.64.8
-    pull: if-not-exists
-    commands:
-      - golangci-lint run --timeout 20m
-    depends_on:
-      - dependencies
-    when:
-      event:
-        - pull_request
+#   - name: lint-check
+#     image: golangci/golangci-lint:v1.64.8
+#     pull: if-not-exists
+#     commands:
+#       - golangci-lint run --timeout 20m
+#     depends_on:
+#       - dependencies
+#     when:
+#       event:
+#         - pull_request
 
-  - name: unit-test
-    image: *go_image
-    environment:
-      <<: *default_environment
-    volumes:
-      - name: deps
-        path: /go
-    commands:
-      - go clean -testcache && go test -coverprofile coverage.out -shuffle on -count 2
-    depends_on:
-      - lint-check
-    when:
-      event:
-        - pull_request
+#   - name: unit-test
+#     image: *go_image
+#     environment:
+#       <<: *default_environment
+#     volumes:
+#       - name: deps
+#         path: /go
+#     commands:
+#       - go clean -testcache && go test -coverprofile coverage.out -shuffle on -count 2
+#     depends_on:
+#       - lint-check
+#     when:
+#       event:
+#         - pull_request
 
-  - name: coverage-check
-    image: *go_image
-    environment:
-      <<: *default_environment
-    commands:
-      - COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
-      - echo "Total coverage is $COVERAGE%"
-      - if [ $(echo "$COVERAGE < 80" | awk '{print ($1 < $2)}') -eq 0 ]; then echo "Coverage is below 80%"; exit 1; fi
-    depends_on:
-      - unit-test
-    when:
-      event:
-        - pull_request
+#   - name: coverage-check
+#     image: *go_image
+#     environment:
+#       <<: *default_environment
+#     commands:
+#       - COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+#       - echo "Total coverage is $COVERAGE%"
+#       - if [ $(echo "$COVERAGE < 80" | awk '{print ($1 < $2)}') -eq 0 ]; then echo "Coverage is below 80%"; exit 1; fi
+#     depends_on:
+#       - unit-test
+#     when:
+#       event:
+#         - pull_request
 
-  - name: build
-    image: *go_image
-    environment:
-      <<: *default_environment
-    volumes:
-      - name: deps
-        path: /go/pkg/mod
-    commands:
-      - go mod download
-      - go build -v -tags netgo -ldflags '-w' -o bootstrap
-    depends_on:
-      - coverage-check
+#   - name: build
+#     image: *go_image
+#     environment:
+#       <<: *default_environment
+#     volumes:
+#       - name: deps
+#         path: /go/pkg/mod
+#     commands:
+#       - go mod download
+#       - go build -v -tags netgo -ldflags '-w' -o bootstrap
+#     depends_on:
+#       - coverage-check
       
-  - name: build-image
-    image: docker
-    volumes:
-      - name: docker-socket
-        path: /var/run/docker.sock
-    commands:
-      - echo "Image start building..."
-      - docker build --no-cache -f ./Dockerfile -t calculator:latest .
-      - docker images
-      - echo "Image build successfully."
-    depends_on:
-      - build
+#   - name: build-image
+#     image: docker
+#     volumes:
+#       - name: docker-socket
+#         path: /var/run/docker.sock
+#     commands:
+#       - echo "Image start building..."
+#       - docker build --no-cache -f ./Dockerfile -t calculator:latest .
+#       - docker images
+#       - echo "Image build successfully."
+#     depends_on:
+#       - build
 
-  - name: scan-image
-    image: aquasec/trivy
-    volumes:
-      - name: docker-socket
-        path: /var/run/docker.sock
-    commands:
-      - export SCAN_IMAGE=calculator:latest
-      - export TRIVY_DISABLE_VET_NOTICE=0
-      - echo "Scanning $SCAN_IMAGE"
-      - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
-      - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
-    depends_on:
-      - build-image
+#   - name: scan-image
+#     image: aquasec/trivy
+#     volumes:
+#       - name: docker-socket
+#         path: /var/run/docker.sock
+#     commands:
+#       - export SCAN_IMAGE=calculator:latest
+#       - export TRIVY_DISABLE_VET_NOTICE=0
+#       - echo "Scanning $SCAN_IMAGE"
+#       - trivy image --quiet --exit-code 0 --ignore-unfixed --severity UNKNOWN,LOW,MEDIUM,HIGH "$SCAN_IMAGE"
+#       - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
+#     depends_on:
+#       - build-image
       
-  # - name: release-image
-  #   image: docker
-  #   environment:
-  #     DOCKER_USERNAME:
-  #       from_secret: USER
-  #     DOCKER_PASSWORD:
-  #       from_secret: TOKEN
-  #   volumes:
-  #     - name: docker-socket
-  #       path: /var/run/docker.sock
-  #   commands:
-  #     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  #     - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
-  #     - docker push "$DOCKER_USERNAME"/calculator:latest
-  #   depends_on:
-  #     - scan-image
-  #   when:
-  #     branch:
-  #       - main
-  #     event:
-  #       - push
+#   # - name: release-image
+#   #   image: docker
+#   #   environment:
+#   #     DOCKER_USERNAME:
+#   #       from_secret: USER
+#   #     DOCKER_PASSWORD:
+#   #       from_secret: TOKEN
+#   #   volumes:
+#   #     - name: docker-socket
+#   #       path: /var/run/docker.sock
+#   #   commands:
+#   #     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+#   #     - docker tag calculator:latest "$DOCKER_USERNAME"/calculator:latest
+#   #     - docker push "$DOCKER_USERNAME"/calculator:latest
+#   #   depends_on:
+#   #     - scan-image
+#   #   when:
+#   #     branch:
+#   #       - main
+#   #     event:
+#   #       - push
 
     
+kind: pipeline
+type: aws
+name: regression-test-pipeline
+
+platform:
+  os: linux
+  arch: amd64
+
+trigger:
+  event:
+    - push
+    - pull_request
+  branch:
+    - main
+    - feature
+
+steps:
+  # Step 1: Start the EC2 instance
+  - name: start-ec2-instance
+    image: amazon/aws-cli
+    commands:
+      - aws ec2 start-instances --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+      AWS_DEFAULT_REGION: us-east-1
