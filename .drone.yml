@@ -159,7 +159,6 @@ steps:
     commands:
       - apk add --no-cache openssh curl
       - export PUBLIC_IP=$(cat public_ip.txt)
-      - echo "EC2 Public IP: $PUBLIC_IP"
       - echo "$EC2_SSH_KEY" > /tmp/key.pem
       - chmod 600 /tmp/key.pem
       - |
