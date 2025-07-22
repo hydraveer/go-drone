@@ -121,7 +121,17 @@ steps:
       - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
     depends_on:
       - build-image
-      
+    
+  - name: start-ec2-instance
+    image: amazon/aws-cli
+    commands:
+      - aws ec2 start-instances --instance-ids i-002a5dc5d4e70e8f7 --region us-east-1
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+      AWS_DEFAULT_REGION: us-east-1
   # - name: release-image
   #   image: docker
   #   environment:
@@ -143,3 +153,4 @@ steps:
   #       - main
   #     event:
   #       - push
+
