@@ -148,7 +148,9 @@ steps:
       AWS_SECRET_ACCESS_KEY:
         from_secret: aws_secret_access_key
       AWS_DEFAULT_REGION: us-east-1
-
+    depends_on:
+      - start-ec2-instance
+  
   - name: ssh-to-ec2
     image: alpine
     depends_on:
@@ -174,7 +176,8 @@ steps:
 
       # SSH into EC2 and run a remote command
       - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@$PUBLIC_IP 'echo "✅ Connected to EC2!" && hostname'
-
+    depends_on:
+      - get-ec2-public-ip
   # - name: release-image
   #   image: docker
   #   environment:
