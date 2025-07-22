@@ -121,8 +121,7 @@ steps:
   #     - trivy image --quiet --scanners vuln --exit-code 0 --ignore-unfixed --severity CRITICAL "$SCAN_IMAGE"
   #   depends_on:
   #     - build-image
-
-steps:
+  
   - name: start-ec2-instance
     image: amazon/aws-cli
     commands:
