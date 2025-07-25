@@ -152,6 +152,7 @@ steps:
             --comment "Install rsyslog" \
             --parameters 'commands=["sudo yum install -y rsyslog", "sudo systemctl enable rsyslog", "sudo systemctl start rsyslog"]' \
             --region $AWS_REGION
+            
     - name: stop-ec2-instance
       image: amazon/aws-cli
       environment:
