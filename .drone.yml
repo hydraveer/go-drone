@@ -152,3 +152,14 @@ steps:
             --comment "Install rsyslog" \
             --parameters 'commands=["sudo yum install -y rsyslog", "sudo systemctl enable rsyslog", "sudo systemctl start rsyslog"]' \
             --region $AWS_REGION
+    - name: stop-ec2-instance
+      image: amazon/aws-cli
+      environment:
+        AWS_ACCESS_KEY_ID:
+          from_secret: aws_access_key_id
+        AWS_SECRET_ACCESS_KEY:
+          from_secret: aws_secret_access_key
+        AWS_DEFAULT_REGION: us-east-1
+      commands:
+        - aws ec2 stop-instances --instance-ids i-0ab2a77d25391389b
+        - aws ec2 wait instance-stopped --instance-ids i-0ab2a77d25391389b
