@@ -122,49 +122,31 @@ steps:
   #   depends_on:
   #     - build-image
 
-  - name: start-ec2-instance
-    image: amazon/aws-cli
-    commands:
-      - aws ec2 start-instances --instance-ids i-0ab2a77d25391389b --region us-east-1
-      - aws ec2 wait instance-running --instance-ids i-0ab2a77d25391389b --region us-east-1
-    environment:
-      AWS_ACCESS_KEY_ID:
-        from_secret: aws_access_key_id
-      AWS_SECRET_ACCESS_KEY:
-        from_secret: aws_secret_access_key
-      AWS_DEFAULT_REGION: us-east-1
-
-  - name: get-ec2-public-ip
-    image: amazon/aws-cli
-    commands:
-      - PUBLIC_IP=$(aws ec2 describe-instances --instance-ids i-0ab2a77d25391389b --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-      - echo "$PUBLIC_IP" > public_ip.txt
-      - cat public_ip.txt
-    environment:
-      AWS_ACCESS_KEY_ID:
-        from_secret: aws_access_key_id
-      AWS_SECRET_ACCESS_KEY:
-        from_secret: aws_secret_access_key
-      AWS_DEFAULT_REGION: us-east-1
-    depends_on:
-      - start-ec2-instance
-  
-  - name: ssh-to-ec2
-    image: alpine
-    depends_on:
-      - get-ec2-public-ip
-    environment:
-      EC2_SSH_KEY:
-        from_secret: ec2_ssh_key
-    commands:
-      - apk add --no-cache openssh curl
-      - export PUBLIC_IP=$(cat public_ip.txt)
-      - echo "$EC2_SSH_KEY" > /tmp/key.pem
-      - chmod 600 /tmp/key.pem
-      - |
-        for i in $(seq 1 10); do
-          nc -zv $PUBLIC_IP 22 && break
-          echo "Waiting for SSH on $PUBLIC_IP..."
-          sleep 5
-        done
-      - ssh -o StrictHostKeyChecking=no -i /tmp/key.pem ec2-user@$PUBLIC_IP 'echo "✅ Connected to EC2!" && hostname'
+    - name: start-ec2-instance
+      image: amazon/aws-cli
+      commands:
+        - aws ec2 start-instances --instance-ids i-0ab2a77d25391389b --region us-east-1
+        - aws ec2 wait instance-running --instance-ids i-0ab2a77d25391389b --region us-east-1
+      environment:
+        AWS_ACCESS_KEY_ID:
+          from_secret: aws_access_key_id
+        AWS_SECRET_ACCESS_KEY:
+          from_secret: aws_secret_access_key
+        AWS_DEFAULT_REGION: us-east-1
+    
+    - name: install-rsyslog
+      image: amazon/aws-cli
+      environment:
+        AWS_ACCESS_KEY_ID:
+          from_secret: aws_access_key_id
+        AWS_SECRET_ACCESS_KEY:
+          from_secret: aws_secret_access_key
+        AWS_REGION: us-east-1
+      commands:
+        - |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=instanceIds,Values=i-0ab2a77d25391389b" \
+            --comment "Install rsyslog" \
+            --parameters 'commands=["sudo yum install -y rsyslog", "sudo systemctl enable rsyslog", "sudo systemctl start rsyslog"]' \
+            --region $AWS_REGION
