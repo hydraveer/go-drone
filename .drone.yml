@@ -143,6 +143,8 @@ steps:
           from_secret: aws_secret_access_key
         AWS_REGION: us-east-1
       commands:
+        - echo "Sleeping for 240 seconds to allow SSM agent to register..."
+        - sleep 240
         - |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
